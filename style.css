@@ -1,0 +1,17 @@
+body {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    color: red;
+}
+h1 {
+    text-align: center;
+}
+h2 {
+    text-align: left; /* propiedade para alinhar texto a esquerda */
+}
+h3{
+    text-align: right; /* propiedade para alinhar o texto a direita */
+}
+p{
+    text-align: justify; /* propiedade justify é utilizada para alinhar o texto na página, distribuindo as palavras entre a margem esquerda e direita. */
+    text-indent: 30px; /* propiedade para adicionar uma margem no inicio da primeira palavra. */
+}
