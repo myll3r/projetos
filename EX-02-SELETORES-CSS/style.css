@@ -1,3 +1,35 @@
-body{
-    
+@charset "UTF-8";
+/* ID NO HTML = # NO CSS */
+/* CLASS NO HTML = . NO CSS */
+/* LEMBRANDO QUE NÃO PODEMOS REPETIR O MESMO ID NO MESMO DOCUMENTO, JÁ A CLASSE PODEMOS REPETIR E INCLUSIVE UTILIZAR MAIS DE UMA CLASSE NO ELEMENTO. */
+body {
+  background-color: rgb(165, 209, 248);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+h1#principal {
+  color: rgb(255, 255, 255);
+  background-color: black;
+  width: auto;
+}
+h1 {
+  color: rgb(19, 149, 236);
+  text-align: center;
+}
+h2 {
+  color: rgb(101, 181, 235);
+  text-align: center;
+}
+p {
+  color: rgb(0, 0, 0);
+  text-align: justify;
+  text-indent: 30px;
+}
+.basico {
+  color: brown;
+}
+.intermediario {
+  color: chocolate;
+}
+.avancado {
+  color: crimson;
 }
