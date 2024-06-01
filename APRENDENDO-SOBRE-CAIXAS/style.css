@@ -1,0 +1,12 @@
+@charset "UTF-8";
+#box {
+  width: 400px;
+  height: 400px;
+  background-color: blueviolet;
+}
+#box2 {
+  margin: 10px 0px 0px 0px;
+  width: 200px;
+  height: 200px;
+  background-color: brown;
+}
