@@ -16,7 +16,36 @@ div > p {
   /* o simbolo > serve para identificar que estou pegando um elemento que está dentro do outro, no caso estou selecionando o elemento p que está dentro da div sendo assim div > p */
   display: none;
 }
-div:hover p {
+div:hover p { /* propiedade hover serve para adicionarmos alguma mudança ao passar o mouse por cima do elemento.  */
   display: block;
   color: red;
+  font-family: "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
+    "Lucida Sans Unicode", Geneva, Verdana, sans-serif;
+}
+ul {
+  list-style: none;
+}
+a {
+  text-decoration: none;
+  color: rgb(0, 0, 0);
+  font-size: 32px;
+}
+a:visited {
+  /* pseudoclasse para alterar propiedades de um elemento quando ele já foi visitado.*/
+  color: rgb(1, 18, 255);
+  text-decoration: underline;
+}
+a:active {
+  /* pseudo-classe para mudar estilo do elemento quando o link já foi clicado.  */
+  color: blueviolet;
+  font-weight: bold;
+}
+a::after {
+  /* pseudo-elemento after adiciona algo após o elemento selecionado no caso a tag "a". */
+  content: "《";
+  color: brown;
+}
+a::before {
+  /* pseudo-elemento after adiciona algo antes do elemento selecionado no caso a tag "a". */
+  content: "》";
 }
