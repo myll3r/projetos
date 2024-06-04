@@ -1,0 +1,32 @@
+#pai {
+  height: 600px;
+  width: 500px;
+  padding: 10px;
+  background-color: grey;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap; /* Permite que os quadrados quebrem para a próxima linha */
+  align-content: space-around; /* Distribui o espaço entre os quadrados */
+  justify-content: space-around; /* Distribui o espaço verticalmente */
+}
+
+div.filho {
+  height: 150px;
+  width: 150px;
+  border: 1px solid white;
+  /* background-image: url(../PROJETO-MEUS-LINKS/assets/avatar-dark.png);
+  background-size: 100px;
+  background-repeat: no-repeat;
+  background-position: center;  */
+  margin: 5px;
+  text-align: center;
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.img-bg {
+  width: 145px;
+  height: 145px;
+  border-radius: 50px;
+}
