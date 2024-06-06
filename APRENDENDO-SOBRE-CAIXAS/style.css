@@ -5,8 +5,9 @@
   background-color: blueviolet;
   display: flex;
   justify-content: center; /* CENTRALIZA HORIZONTALMENTE */
-  
   align-items: center; /* CENTRALIZA VERTICALMENTE */
+  margin: 10px;
+  outline: 5px dashed black;
 }
 #box2 {
   margin: 10px 0px 0px 0px;
