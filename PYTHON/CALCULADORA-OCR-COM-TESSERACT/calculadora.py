@@ -12,16 +12,25 @@ import cv2  # Importação do OpenCV
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 import os
 import logging
+import pyautogui
 
-# Configuração do logging
+"""# Configuração do logging
 logging.basicConfig(
     filename='erro_log.txt',  # O nome do arquivo de log
     level=logging.DEBUG,      # Registra mensagens de DEBUG ou mais graves
     format='%(asctime)s - %(levelname)s - %(message)s',  # Formato das mensagens
-)
-# Caminho absoluto para o Tesseract dentro da pasta do projeto
-tesseract_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Tesseract-OCR', 'tesseract.exe'))
-# Configurar o pytesseract para usar esse caminho
+)"""
+# Verifica se está rodando como executável (PyInstaller)
+if getattr(sys, 'frozen', False):
+    base_path = sys._MEIPASS  # Pasta temporária do PyInstaller
+else:
+    base_path = os.path.dirname(__file__)  # Modo normal (Python)
+
+# Caminho do Tesseract dentro do pacote
+tesseract_path = os.path.join(base_path, 'Tesseract-OCR', 'tesseract.exe')
+
+# Define o caminho do Tesseract para o pytesseract
+import pytesseract
 pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 # Inicializa a variável total_acumulado fora das funções
@@ -32,20 +41,23 @@ config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789R$.,- '
 def selecionar_area(canvas, root):
     """
     Permite ao usuário selecionar uma área da tela com retângulo dinâmico.
-    Retorna as coordenadas da região (x1, y1, x2, y2).
+    Retorna as coordenadas absolutas da região (x1, y1, x2, y2).
     """
     def iniciar_selecao(event):
         global start_x, start_y, rect_id
-        start_x, start_y = event.x, event.y
+        # Obtém coordenadas absolutas do mouse
+        start_x, start_y = root.winfo_pointerx(), root.winfo_pointery()
         rect_id = canvas.create_rectangle(start_x, start_y, start_x, start_y, outline="#E2A40C", width=2)
 
     def ajustar_retangulo(event):
-        canvas.coords(rect_id, start_x, start_y, event.x, event.y)
+        # Atualiza coordenadas do retângulo
+        end_x, end_y = root.winfo_pointerx(), root.winfo_pointery()
+        canvas.coords(rect_id, start_x, start_y, end_x, end_y)
 
     def finalizar_selecao(event):
         global end_x, end_y
-        end_x, end_y = event.x, event.y
-        root.quit()  # Finaliza a seleção e permite o resto do programa continuar
+        end_x, end_y = root.winfo_pointerx(), root.winfo_pointery()
+        root.quit()  # Fecha a janela de seleção
 
     global rect_id
     rect_id = None
@@ -54,12 +66,14 @@ def selecionar_area(canvas, root):
     canvas.bind("<B1-Motion>", ajustar_retangulo)
     canvas.bind("<ButtonRelease-1>", finalizar_selecao)
 
-    root.mainloop()  # Mantém a interface aberta até o fim da seleção
+    root.mainloop()  # Mantém a interface aberta até a seleção ser concluída
+
     return (start_x, start_y, end_x, end_y)
 
 def capturar_area(escalar=2):
     """
     Captura a área da tela selecionada pelo usuário e retorna a imagem.
+    Ajusta automaticamente para diferentes resoluções de tela.
     """
     root = tk.Tk()
     root.attributes("-fullscreen", True)
@@ -69,15 +83,32 @@ def capturar_area(escalar=2):
     canvas = tk.Canvas(root, cursor="cross", bg="gray", highlightthickness=0)
     canvas.pack(fill=tk.BOTH, expand=True)
 
-    x1, y1, x2, y2 = selecionar_area(canvas, root)
+    x1, y1, x2, y2 = selecionar_area(canvas, root)  # Função que captura a seleção do usuário
 
+    # Obtém a resolução atual da tela
+    largura_tela, altura_tela = pyautogui.size()
+    largura_ref = 1920  # Resolução base usada no desenvolvimento
+    altura_ref = 1080
+
+    # Calcula o fator de ajuste para diferentes resoluções
+    fator_x = largura_tela / largura_ref
+    fator_y = altura_tela / altura_ref
+
+    # Ajusta as coordenadas para a tela atual
+    x1 = int(x1 * fator_x)
+    y1 = int(y1 * fator_y)
+    x2 = int(x2 * fator_x)
+    y2 = int(y2 * fator_y)
+
+    # Captura a tela com as novas coordenadas
     region = (x1, y1, x2, y2)
     imagem = ImageGrab.grab(bbox=region)
 
     # Aplicando escalonamento para melhorar a qualidade
     largura, altura = imagem.size
     imagem = imagem.resize((largura * escalar, altura * escalar), Image.LANCZOS)
-    imagem.save('imagem_salva.png')
+    """imagem.save('imagem_salva.png')"""
+
     return imagem
 
 def melhorar_imagem(imagem):
@@ -89,7 +120,7 @@ def melhorar_imagem(imagem):
             return imagem
         enhancer = ImageEnhance.Contrast(imagem)
         imagem = enhancer.enhance(2.0)
-        imagem.save('imagem_salva_melhorada.png')
+        """"imagem.save('imagem_salva_melhorada.png')"""
         return imagem
     
     except Exception as e:
@@ -393,11 +424,16 @@ def somar_ggr_negativo(resultados_label, soma_label):
     thread.start()
 # Interface Gráfica
 def setup_icone(root):
-    # Caminho para o ícone
-    icon_path = "imagens/icon.ico"  # Caminho do ícone na pasta imagens
+    # Verifica se o aplicativo está empacotado
+    if getattr(sys, 'frozen', False):
+        # Se estiver empacotado, usa o diretório onde o executável está
+        icon_path = os.path.join(sys._MEIPASS, 'imagens/icon.ico')
+    else:
+        # Caso contrário, usa o diretório de desenvolvimento
+        icon_path = 'imagens/icon.ico'
 
-    # Definir o ícone para a janela
-    root.iconbitmap(icon_path)
+    # Configura o ícone da janela
+    root.wm_iconbitmap(icon_path)
 
 def criar_interface():
     """
