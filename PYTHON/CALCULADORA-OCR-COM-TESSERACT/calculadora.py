@@ -200,21 +200,6 @@ def corrigir_valores(valores):
         valores_corrigidos.append(valor)
 
     return valores_corrigidos
-# Exemplo de valores extraídos pelo OCR
-valores_extraidos = ['R$ 33.486,71', 'R$ 32.31311', '-R$ 3.674,93']
-# Neste exemplo, o segundo valor deve ser juntado se estiver fragmentado.
-# Suponha que o OCR retornou: ['R$ 33.486,71', 'R$ 32', '31311', '-R$ 3.674,93']
-
-# Teste com fragmentos:
-valores_extraidos_fragmentados = ['R$ 33.486,71', 'R$ 32', '31311', '-R$ 3.674,93']
-print("Antes do ajuste:", valores_extraidos_fragmentados)
-valores_ajustados = ajustar_fragmentos(valores_extraidos_fragmentados)
-print("Após o ajuste:", valores_ajustados)
-
-valores_corrigidos = corrigir_valores(valores_extraidos_fragmentados)
-print("Valores corrigidos:", valores_corrigidos)
-
-
 
 def validar_valor(valor):
     """
