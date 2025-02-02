@@ -128,58 +128,70 @@ def melhorar_imagem(imagem):
         return imagem
     
 
+import re
+
+def ajustar_fragmentos(valores):
+    """
+    Reune tokens fragmentados que não iniciam com 'R$' ao token anterior.
+    Exemplo:
+       ['R$ 312', '12', 'R$ 129,08'] -> ['R$ 31212', 'R$ 129,08']
+    """
+    novos = []
+    for token in valores:
+        if token.startswith("R$"):
+            novos.append(token)
+        else:
+            # Se o token atual não começa com "R$" e há um token anterior,
+            # junte-o sem espaço.
+            if novos:
+                novos[-1] = novos[-1] + token
+            else:
+                novos.append(token)
+    return novos
+
 def corrigir_valores(valores):
     """
     Corrige os valores monetários:
-    - Remove o símbolo 'R$' e espaços extras.
-    - Padroniza o separador decimal para ponto.
-    - Remove pontos usados como separadores de milhares.
-    - Garante que valores negativos sejam tratados corretamente.
-    - Corrige valores como '018' para '0.18'.
-    - Corrige valores longos sem separadores (ex: '4211211' para '42112.11').
-    - Trata casos onde o OCR interpreta incorretamente pontos e vírgulas.
+    - Remove pontos de milhar desnecessários.
+    - Converte vírgulas para pontos.
+    - Lida com valores sem separadores, como 34415 -> 344,15.
+    - Trata números grandes ou mal formatados, como 605.881,00 ou 1.000.000,00.
+    - Retorna valores em formato numérico correto para cálculos.
     """
+    # Primeiro, ajuste os fragmentos
+    valores = ajustar_fragmentos(valores)
+    
     valores_corrigidos = []
 
     for valor in valores:
         # Remover o símbolo 'R$' e espaços extras
-        valor = valor.replace("R$", "").replace(" ", "").strip()
+        valor = valor.replace("R$", "").replace(" ", "")
 
-        # Verificar se o valor é negativo
+        # Tratar valores negativos
         negativo = valor.startswith("-")
         if negativo:
             valor = valor[1:]  # Remover o sinal negativo para tratamento
 
-        # Tratar casos onde o OCR interpreta incorretamente pontos e vírgulas
-        if "," in valor and "." in valor:
-            # Se houver ambos, assume que a vírgula é o separador decimal
-            valor = valor.replace(".", "").replace(",", ".")
+        # Caso o valor contenha múltiplos separadores (pontos e vírgulas)
+        if "." in valor and "," in valor:
+            if valor.rfind(",") > valor.rfind("."):
+                # Formato típico (1.000,00): Remover pontos de milhar
+                partes = valor.split(",")
+                valor = "".join(partes[:-1]).replace(".", "") + "." + partes[-1]
+            else:
+                # Formato atípico (1,000.00): Remover vírgulas de milhar
+                partes = valor.split(".")
+                valor = "".join(partes[:-1]).replace(",", "") + "." + partes[-1]
+        elif "." in valor and valor.count(".") > 1:
+            # Para números grandes com múltiplos pontos (1.234.567), manter só o último como decimal
+            partes = valor.split(".")
+            valor = "".join(partes[:-1]) + "." + partes[-1]
         elif "," in valor:
-            # Substituir vírgula por ponto para padronizar o separador decimal
+            # Formato simples com vírgula decimal (ex: 344,15 ou 7,16)
             valor = valor.replace(",", ".")
-        elif "." in valor and len(valor.split(".")[-1]) != 2:
-            # Se o ponto não for usado como separador decimal, remove como separador de milhar
-            valor = valor.replace(".", "")
-
-        # Verificar se o valor tem 3 dígitos e não possui vírgula ou ponto
-        if len(valor) == 3 and valor.isdigit():  # Ex: '018'
-            valor = valor[:-2] + "." + valor[-2:]  # Convertendo 018 para 0.18
-
-        # Verificar se o valor é longo e não possui separadores (ex: '4211211')
-        elif len(valor) > 3 and valor.isdigit():
-            # Adicionar um ponto antes dos últimos 2 dígitos
-            valor = valor[:-2] + "." + valor[-2:]  # Convertendo 4211211 para 42112.11
-
-        # Garantir que a parte decimal tenha dois dígitos
-        if "." in valor:
-            inteira, decimal = valor.split(".")
-            if len(decimal) > 2:
-                decimal = decimal[:2]  # Truncar para duas casas decimais
-            elif len(decimal) < 2:
-                decimal = decimal.ljust(2, "0")  # Completar com zeros
-            valor = f"{inteira}.{decimal}"
-        else:
-            valor = valor + ".00"  # Adicionar duas casas decimais se não houver separador
+        elif valor.isdigit() and len(valor) > 2:
+            # Para valores sem separador decimal (ex: "34415" -> "344.15")
+            valor = valor[:-2] + "." + valor[-2:]
 
         # Reconstruir o valor com o sinal negativo, se necessário
         if negativo:
@@ -188,6 +200,21 @@ def corrigir_valores(valores):
         valores_corrigidos.append(valor)
 
     return valores_corrigidos
+# Exemplo de valores extraídos pelo OCR
+valores_extraidos = ['R$ 33.486,71', 'R$ 32.31311', '-R$ 3.674,93']
+# Neste exemplo, o segundo valor deve ser juntado se estiver fragmentado.
+# Suponha que o OCR retornou: ['R$ 33.486,71', 'R$ 32', '31311', '-R$ 3.674,93']
+
+# Teste com fragmentos:
+valores_extraidos_fragmentados = ['R$ 33.486,71', 'R$ 32', '31311', '-R$ 3.674,93']
+print("Antes do ajuste:", valores_extraidos_fragmentados)
+valores_ajustados = ajustar_fragmentos(valores_extraidos_fragmentados)
+print("Após o ajuste:", valores_ajustados)
+
+valores_corrigidos = corrigir_valores(valores_extraidos_fragmentados)
+print("Valores corrigidos:", valores_corrigidos)
+
+
 
 def validar_valor(valor):
     """
