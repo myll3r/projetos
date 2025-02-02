@@ -132,20 +132,19 @@ import re
 
 def ajustar_fragmentos(valores):
     """
-    Junta tokens fragmentados que não iniciam com 'R$' ao token anterior.
+    Reune tokens fragmentados que não iniciam com 'R$' ao token anterior.
     Exemplo:
-        ['R$ 4.305,00', 'R$ 1.244,00', 'R$ 2.398', '11']
-    torna-se:
-        ['R$ 4.305,00', 'R$ 1.244,00', 'R$ 2.398/11']
+       ['R$ 312', '12', 'R$ 129,08'] -> ['R$ 31212', 'R$ 129,08']
     """
     novos = []
     for token in valores:
-        token = token.strip()
         if token.startswith("R$"):
             novos.append(token)
         else:
+            # Se o token atual não começa com "R$" e há um token anterior,
+            # junte-o sem espaço.
             if novos:
-                novos[-1] = novos[-1] + "/" + token
+                novos[-1] = novos[-1] + token
             else:
                 novos.append(token)
     return novos
@@ -153,57 +152,53 @@ def ajustar_fragmentos(valores):
 def corrigir_valores(valores):
     """
     Corrige os valores monetários:
-    - Ajusta fragmentos que foram extraídos separadamente.
-    - Substitui barras (/) por vírgulas, pois a barra deve ser um separador decimal.
-    - Remove o símbolo 'R$' e espaços extras.
-    - Trata valores com múltiplos separadores (pontos de milhar e vírgula decimal), removendo pontos desnecessários e convertendo a vírgula em ponto.
-    - Para valores sem separador, assume que os dois últimos dígitos representam os centavos.
-    - Retorna os valores numéricos em formato adequado para cálculos.
+    - Remove pontos de milhar desnecessários.
+    - Converte vírgulas para pontos.
+    - Lida com valores sem separadores, como 34415 -> 344,15.
+    - Trata números grandes ou mal formatados, como 605.881,00 ou 1.000.000,00.
+    - Retorna valores em formato numérico correto para cálculos.
     """
-    # Primeiro, ajustar fragmentos para unir tokens quebrados
+    # Primeiro, ajuste os fragmentos
     valores = ajustar_fragmentos(valores)
     
     valores_corrigidos = []
-    
+
     for valor in valores:
-        # Substituir a barra por vírgula (caso a barra represente o separador decimal)
-        valor = valor.replace("/", ",")
-    
-        # Remover "R$" e espaços extras
+        # Remover o símbolo 'R$' e espaços extras
         valor = valor.replace("R$", "").replace(" ", "")
-    
+
         # Tratar valores negativos
         negativo = valor.startswith("-")
         if negativo:
-            valor = valor[1:]
-    
-        # Caso o valor contenha ambos os separadores (ponto e vírgula)
+            valor = valor[1:]  # Remover o sinal negativo para tratamento
+
+        # Caso o valor contenha múltiplos separadores (pontos e vírgulas)
         if "." in valor and "," in valor:
             if valor.rfind(",") > valor.rfind("."):
-                # Formato típico (1.000,00): Remove os pontos de milhar
+                # Formato típico (1.000,00): Remover pontos de milhar
                 partes = valor.split(",")
                 valor = "".join(partes[:-1]).replace(".", "") + "." + partes[-1]
             else:
-                # Formato atípico (1,000.00): Remove as vírgulas de milhar
+                # Formato atípico (1,000.00): Remover vírgulas de milhar
                 partes = valor.split(".")
                 valor = "".join(partes[:-1]).replace(",", "") + "." + partes[-1]
         elif "." in valor and valor.count(".") > 1:
-            # Para números grandes com múltiplos pontos (ex: 1.234.567): mantém apenas o último como separador decimal
+            # Para números grandes com múltiplos pontos (1.234.567), manter só o último como decimal
             partes = valor.split(".")
             valor = "".join(partes[:-1]) + "." + partes[-1]
         elif "," in valor:
-            # Formato simples com vírgula decimal (ex: 344,15 ou 7,16): substituir vírgula por ponto
+            # Formato simples com vírgula decimal (ex: 344,15 ou 7,16)
             valor = valor.replace(",", ".")
         elif valor.isdigit() and len(valor) > 2:
-            # Para valores sem separador (ex: "34415" deve ser interpretado como "344.15")
+            # Para valores sem separador decimal (ex: "34415" -> "344.15")
             valor = valor[:-2] + "." + valor[-2:]
-    
-        # Adicionar o sinal negativo se necessário
+
+        # Reconstruir o valor com o sinal negativo, se necessário
         if negativo:
             valor = "-" + valor
-    
+
         valores_corrigidos.append(valor)
-    
+
     return valores_corrigidos
 
 def validar_valor(valor):
