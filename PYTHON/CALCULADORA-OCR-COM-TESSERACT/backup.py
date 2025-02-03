@@ -120,31 +120,31 @@ def melhorar_imagem(imagem):
             return imagem
         enhancer = ImageEnhance.Contrast(imagem)
         imagem = enhancer.enhance(2.0)
-        """"imagem.save('imagem_salva_melhorada.png')"""
+        """imagem.save('imagem_salva_melhorada.png')"""
         return imagem
     
     except Exception as e:
         print(f"Erro ao melhorar a imagem: {e}")
         return imagem
-    
 
-import re
+
 
 def ajustar_fragmentos(valores):
     """
-    Reune tokens fragmentados que não iniciam com 'R$' ao token anterior.
+    Junta tokens fragmentados que não iniciam com 'R$' ao token anterior.
     Exemplo:
-       ['R$ 312', '12', 'R$ 129,08'] -> ['R$ 31212', 'R$ 129,08']
+        ['R$ 4.305,00', 'R$ 1.244,00', 'R$ 2.398', '11']
+    torna-se:
+        ['R$ 4.305,00', 'R$ 1.244,00', 'R$ 2.398/11']
     """
     novos = []
     for token in valores:
+        token = token.strip()
         if token.startswith("R$"):
             novos.append(token)
         else:
-            # Se o token atual não começa com "R$" e há um token anterior,
-            # junte-o sem espaço.
             if novos:
-                novos[-1] = novos[-1] + token
+                novos[-1] = novos[-1] + "/" + token
             else:
                 novos.append(token)
     return novos
@@ -152,73 +152,73 @@ def ajustar_fragmentos(valores):
 def corrigir_valores(valores):
     """
     Corrige os valores monetários:
-    - Remove pontos de milhar desnecessários.
-    - Converte vírgulas para pontos.
-    - Lida com valores sem separadores, como 34415 -> 344,15.
-    - Trata números grandes ou mal formatados, como 605.881,00 ou 1.000.000,00.
-    - Retorna valores em formato numérico correto para cálculos.
+    - Ajusta fragmentos que foram extraídos separadamente.
+    - Substitui barras (/) por vírgulas, pois a barra deve ser um separador decimal.
+    - Remove o símbolo 'R$' e espaços extras.
+    - Trata valores com múltiplos separadores (pontos de milhar e vírgula decimal), removendo pontos desnecessários e convertendo a vírgula em ponto.
+    - Para valores sem separador, assume que os dois últimos dígitos representam os centavos.
+    - Retorna os valores numéricos em formato adequado para cálculos.
     """
-    # Primeiro, ajuste os fragmentos
+    # Primeiro, ajustar fragmentos para unir tokens quebrados
     valores = ajustar_fragmentos(valores)
     
     valores_corrigidos = []
-
+    
     for valor in valores:
-        # Remover o símbolo 'R$' e espaços extras
+        # Substituir a barra por vírgula (caso a barra represente o separador decimal)
+        valor = valor.replace("/", ",")
+    
+        # Remover "R$" e espaços extras
         valor = valor.replace("R$", "").replace(" ", "")
-
+    
         # Tratar valores negativos
         negativo = valor.startswith("-")
         if negativo:
-            valor = valor[1:]  # Remover o sinal negativo para tratamento
-
-        # Caso o valor contenha múltiplos separadores (pontos e vírgulas)
+            valor = valor[1:]
+    
+        # Caso o valor contenha ambos os separadores (ponto e vírgula)
         if "." in valor and "," in valor:
             if valor.rfind(",") > valor.rfind("."):
-                # Formato típico (1.000,00): Remover pontos de milhar
+                # Formato típico (1.000,00): Remove os pontos de milhar
                 partes = valor.split(",")
                 valor = "".join(partes[:-1]).replace(".", "") + "." + partes[-1]
             else:
-                # Formato atípico (1,000.00): Remover vírgulas de milhar
+                # Formato atípico (1,000.00): Remove as vírgulas de milhar
                 partes = valor.split(".")
                 valor = "".join(partes[:-1]).replace(",", "") + "." + partes[-1]
         elif "." in valor and valor.count(".") > 1:
-            # Para números grandes com múltiplos pontos (1.234.567), manter só o último como decimal
+            # Para números grandes com múltiplos pontos (ex: 1.234.567): mantém apenas o último como separador decimal
             partes = valor.split(".")
             valor = "".join(partes[:-1]) + "." + partes[-1]
         elif "," in valor:
-            # Formato simples com vírgula decimal (ex: 344,15 ou 7,16)
+            # Formato simples com vírgula decimal (ex: 344,15 ou 7,16): substituir vírgula por ponto
             valor = valor.replace(",", ".")
         elif valor.isdigit() and len(valor) > 2:
-            # Para valores sem separador decimal (ex: "34415" -> "344.15")
+            # Para valores sem separador (ex: "34415" deve ser interpretado como "344.15")
             valor = valor[:-2] + "." + valor[-2:]
-
-        # Reconstruir o valor com o sinal negativo, se necessário
+    
+        # Adicionar o sinal negativo se necessário
         if negativo:
             valor = "-" + valor
-
+    
         valores_corrigidos.append(valor)
-
+    
     return valores_corrigidos
 
 def validar_valor(valor):
     """
-    Valida se o valor está no formato correto:
-    - Aceita valores positivos e negativos.
-    - Garante que o valor tenha exatamente duas casas decimais.
+    Valida se o valor está no formato correto.
     """
     return re.match(r"^-?\d+\.\d{2}$", valor) is not None
 
 def extrair_valores_da_imagem(imagem):
     """
-    Realiza OCR na imagem e extrai valores monetários.
+    Realiza OCR e extrai valores monetários.
     """
-    imagem = melhorar_imagem(imagem)
     texto = pytesseract.image_to_string(imagem, lang="por", config="--psm 6")
     print(f"Texto extraído:\n{texto}")
 
-    # Regex ajustado para capturar mais formatos
-    padrao_valores = r"R\$\s*-?\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|R\$\s*-?\s*\d+(?:[.,]\d{2})?|\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?"
+    padrao_valores = r"R\$\s*-?\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|R\$\s*-?\s*\d+(?:[.,]\d{2})?"
     valores = re.findall(padrao_valores, texto)
     print(f"Valores encontrados: {valores}")
 

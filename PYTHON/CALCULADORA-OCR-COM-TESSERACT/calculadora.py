@@ -107,28 +107,46 @@ def capturar_area(escalar=2):
     # Aplicando escalonamento para melhorar a qualidade
     largura, altura = imagem.size
     imagem = imagem.resize((largura * escalar, altura * escalar), Image.LANCZOS)
-    """imagem.save('imagem_salva.png')"""
-
+        # Converte a imagem para escala de cinza
+    imagem = imagem.convert("L")
+        
+        # Define o limiar para o threshold
+    limiar = 90 # Você pode ajustar esse valor conforme necessário (ex: 100, 150, etc.)
+        
+        # Aplica o threshold: para cada pixel, se o valor for maior que o limiar, retorna 255 (branco); caso contrário, 0 (preto)
+    imagem = imagem.point(lambda p: 255 if p > limiar else 0)
+        
+        # Salva a imagem processada para verificação
+    # imagem.save('imgpb.png')
     return imagem
 
-def melhorar_imagem(imagem):
-    """
-    Melhora a qualidade da imagem para OCR.
-    """
-    try:
-        if not imagem or ImageStat.Stat(imagem).sum[0] == 0:
-            return imagem
-        enhancer = ImageEnhance.Contrast(imagem)
-        imagem = enhancer.enhance(2.0)
-        """"imagem.save('imagem_salva_melhorada.png')"""
-        return imagem
-    
-    except Exception as e:
-        print(f"Erro ao melhorar a imagem: {e}")
-        return imagem
-    
 
-import re
+# def melhorar_imagem(imagem):
+#     """
+#     Converte a imagem para preto e branco usando threshold, mas mantém o modo "L"
+#     (escala de cinza) para preservar detalhes que possam facilitar a leitura do OCR.
+#     """
+#     try:
+#         # Verifica se a imagem existe e não está vazia
+#         if not imagem or ImageStat.Stat(imagem).sum[0] == 0:
+#             return imagem
+
+#         # Converte a imagem para escala de cinza
+#         imagem = imagem.convert("L")
+        
+#         # Define o limiar para o threshold
+#         limiar = 70  # Você pode ajustar esse valor conforme necessário (ex: 100, 150, etc.)
+        
+#         # Aplica o threshold: para cada pixel, se o valor for maior que o limiar, retorna 255 (branco); caso contrário, 0 (preto)
+#         imagem = imagem.point(lambda p: 255 if p > limiar else 0)
+        
+#         # Salva a imagem processada para verificação
+#         imagem.save('imgpb.png')
+        
+#         return imagem
+#     except Exception as e:
+#         print(f"Erro ao melhorar a imagem: {e}")
+#         return imagem
 
 def ajustar_fragmentos(valores):
     """
@@ -152,78 +170,47 @@ def ajustar_fragmentos(valores):
 
 def corrigir_valores(valores):
     """
-    Corrige os valores monetários:
-    - Ajusta fragmentos que foram extraídos separadamente.
-    - Substitui barras (/) por vírgulas, pois a barra deve ser um separador decimal.
-    - Remove o símbolo 'R$' e espaços extras.
-    - Trata valores com múltiplos separadores (pontos de milhar e vírgula decimal), removendo pontos desnecessários e convertendo a vírgula em ponto.
-    - Para valores sem separador, assume que os dois últimos dígitos representam os centavos.
-    - Retorna os valores numéricos em formato adequado para cálculos.
+    Corrige os valores monetários extraídos pelo OCR.
     """
-    # Primeiro, ajustar fragmentos para unir tokens quebrados
-    valores = ajustar_fragmentos(valores)
-    
     valores_corrigidos = []
     
     for valor in valores:
-        # Substituir a barra por vírgula (caso a barra represente o separador decimal)
-        valor = valor.replace("/", ",")
-    
-        # Remover "R$" e espaços extras
-        valor = valor.replace("R$", "").replace(" ", "")
-    
-        # Tratar valores negativos
-        negativo = valor.startswith("-")
-        if negativo:
-            valor = valor[1:]
-    
+        valor = valor.replace("R$", "").replace(" ", "").replace("/", ",")
+        
         # Caso o valor contenha ambos os separadores (ponto e vírgula)
         if "." in valor and "," in valor:
             if valor.rfind(",") > valor.rfind("."):
-                # Formato típico (1.000,00): Remove os pontos de milhar
                 partes = valor.split(",")
                 valor = "".join(partes[:-1]).replace(".", "") + "." + partes[-1]
             else:
-                # Formato atípico (1,000.00): Remove as vírgulas de milhar
                 partes = valor.split(".")
                 valor = "".join(partes[:-1]).replace(",", "") + "." + partes[-1]
         elif "." in valor and valor.count(".") > 1:
-            # Para números grandes com múltiplos pontos (ex: 1.234.567): mantém apenas o último como separador decimal
             partes = valor.split(".")
             valor = "".join(partes[:-1]) + "." + partes[-1]
         elif "," in valor:
-            # Formato simples com vírgula decimal (ex: 344,15 ou 7,16): substituir vírgula por ponto
             valor = valor.replace(",", ".")
         elif valor.isdigit() and len(valor) > 2:
-            # Para valores sem separador (ex: "34415" deve ser interpretado como "344.15")
             valor = valor[:-2] + "." + valor[-2:]
-    
-        # Adicionar o sinal negativo se necessário
-        if negativo:
-            valor = "-" + valor
-    
+
         valores_corrigidos.append(valor)
     
     return valores_corrigidos
 
 def validar_valor(valor):
     """
-    Valida se o valor está no formato correto:
-    - Aceita valores positivos e negativos.
-    - Garante que o valor tenha exatamente duas casas decimais.
+    Valida se o valor está no formato correto.
     """
     return re.match(r"^-?\d+\.\d{2}$", valor) is not None
 
 def extrair_valores_da_imagem(imagem):
     """
-    Realiza OCR na imagem e extrai valores monetários.
+    Realiza OCR e extrai valores monetários.
     """
-    imagem = melhorar_imagem(imagem)
-    texto = pytesseract.image_to_string(imagem, lang="por", config="--psm 6")
+    texto = pytesseract.image_to_string(imagem, config="--psm 6")
     print(f"Texto extraído:\n{texto}")
 
-    # Regex ajustado para capturar mais formatos
-    padrao_valores = r"R\$\s*-?\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|R\$\s*-?\s*\d+(?:[.,]\d{2})?|\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?"
+    padrao_valores = r"R\$\s*-?\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|R\$\s*-?\s*\d+(?:[.,]\d{2})?"
     valores = re.findall(padrao_valores, texto)
     print(f"Valores encontrados: {valores}")
 
